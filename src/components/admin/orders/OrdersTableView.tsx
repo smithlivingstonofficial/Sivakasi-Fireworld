@@ -6,6 +6,7 @@ import {
   CheckSquare,
   Square,
   Printer,
+  PackageCheck,
   ChevronRight,
 } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/common/WhatsAppIcon';
@@ -19,6 +20,7 @@ interface OrdersTableViewProps {
   onSelectAll: () => void;
   onSelectOrder: (order: Order) => void;
   onPrintSlip: (order: Order) => void;
+  onPrintPackingSlip?: (order: Order) => void;
   onRequestStatusChange: (
     orderId: string,
     orderNumber: string,
@@ -77,6 +79,7 @@ export function OrdersTableView({
   onSelectAll,
   onSelectOrder,
   onPrintSlip,
+  onPrintPackingSlip,
   onRequestStatusChange,
   onTogglePaymentSettlement,
   onOpenWhatsAppModal,
@@ -297,10 +300,21 @@ export function OrdersTableView({
                     <button
                       type="button"
                       onClick={() => onPrintSlip(order)}
-                      className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 rounded-lg transition-colors cursor-pointer border border-slate-200/80"
-                      title="Print Packing Slip"
+                      className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors cursor-pointer border border-slate-200/80"
+                      title="Print Bill / Invoice"
                     >
                       <Printer className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onPrintPackingSlip ? onPrintPackingSlip(order) : onPrintSlip(order)
+                      }
+                      className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 hover:text-amber-950 rounded-lg transition-colors cursor-pointer border border-amber-500/25"
+                      title="Print Packing Slip (Warehouse Checklist)"
+                    >
+                      <PackageCheck className="w-3.5 h-3.5 text-amber-700" />
                     </button>
 
                     {nextStatus && (

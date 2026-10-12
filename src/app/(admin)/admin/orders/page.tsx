@@ -14,6 +14,7 @@ import { BatchActionBar } from '@/components/admin/orders/BatchActionBar';
 import { OrdersTableView } from '@/components/admin/orders/OrdersTableView';
 import { OrdersCardView } from '@/components/admin/orders/OrdersCardView';
 import { PackingSlipModal } from '@/components/admin/orders/PackingSlipModal';
+import { WarehousePackingSlipModal } from '@/components/admin/orders/WarehousePackingSlipModal';
 import {
   StatusConfirmationModal,
   PendingStatusChange,
@@ -34,6 +35,7 @@ export default function AdminOrdersPage() {
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   const [packingSlipOrder, setPackingSlipOrder] = useState<Order | null>(null);
+  const [warehousePackingSlipOrder, setWarehousePackingSlipOrder] = useState<Order | null>(null);
   const [whatsAppOrder, setWhatsAppOrder] = useState<Order | null>(null);
   const [whatsAppTemplate, setWhatsAppTemplate] = useState<WhatsAppTemplateType | undefined>(undefined);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
@@ -364,6 +366,7 @@ export default function AdminOrdersPage() {
           onSelectAll={handleSelectAll}
           onSelectOrder={(order) => router.push(`/admin/orders/${order.order_number}`)}
           onPrintSlip={(order) => setPackingSlipOrder(order)}
+          onPrintPackingSlip={(order) => setWarehousePackingSlipOrder(order)}
           onRequestStatusChange={requestStatusChange}
           onTogglePaymentSettlement={handleTogglePaymentSettlement}
           onOpenWhatsAppModal={handleOpenWhatsAppModal}
@@ -375,6 +378,7 @@ export default function AdminOrdersPage() {
           onToggleSelection={handleToggleOrderSelection}
           onSelectOrder={(order) => router.push(`/admin/orders/${order.order_number}`)}
           onPrintSlip={(order) => setPackingSlipOrder(order)}
+          onPrintPackingSlip={(order) => setWarehousePackingSlipOrder(order)}
           onRequestStatusChange={requestStatusChange}
           onTogglePaymentSettlement={handleTogglePaymentSettlement}
           onOpenWhatsAppModal={handleOpenWhatsAppModal}
@@ -404,10 +408,16 @@ export default function AdminOrdersPage() {
         onConfirm={confirmStatusChange}
       />
 
-      {/* Packing Slip & Tax Invoice Modal */}
+      {/* Bill & Tax Invoice Modal */}
       <PackingSlipModal
         order={packingSlipOrder}
         onClose={() => setPackingSlipOrder(null)}
+      />
+
+      {/* Dedicated Warehouse Packing Slip Modal */}
+      <WarehousePackingSlipModal
+        order={warehousePackingSlipOrder}
+        onClose={() => setWarehousePackingSlipOrder(null)}
       />
 
       {/* Toast Feedback Manager */}

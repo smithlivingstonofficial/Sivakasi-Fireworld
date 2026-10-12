@@ -33,6 +33,7 @@ import {
   CreditCard,
   Building,
   CheckCheck,
+  PackageCheck,
 } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/common/WhatsAppIcon';
 import { OrderService } from '@/lib/services/order.service';
@@ -40,6 +41,7 @@ import { ProductService } from '@/lib/services/product.service';
 import { Order, OrderStatus, OrderItem, Product } from '@/types';
 import { WhatsAppModal } from '@/components/admin/orders/WhatsAppModal';
 import { PackingSlipModal } from '@/components/admin/orders/PackingSlipModal';
+import { WarehousePackingSlipModal } from '@/components/admin/orders/WarehousePackingSlipModal';
 import { StatusConfirmationModal, PendingStatusChange } from '@/components/admin/orders/StatusConfirmationModal';
 import { CancelOrderModal } from '@/components/admin/orders/CancelOrderModal';
 import { ReopenOrderModal } from '@/components/admin/orders/ReopenOrderModal';
@@ -98,6 +100,7 @@ export default function SingleOrderDetailsPage({ params }: PageProps) {
 
   // Modals state
   const [isPackingSlipOpen, setIsPackingSlipOpen] = useState(false);
+  const [isWarehousePackingSlipOpen, setIsWarehousePackingSlipOpen] = useState(false);
   const [whatsAppTemplate, setWhatsAppTemplate] = useState<WhatsAppTemplateType>('ORDER_RECEIPT');
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -519,10 +522,19 @@ export default function SingleOrderDetailsPage({ params }: PageProps) {
             <button
               onClick={() => setIsPackingSlipOpen(true)}
               className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5 border border-slate-200 shadow-2xs"
-              title="Print Tax Invoice / Packing Slip"
+              title="Print Bill / Tax Invoice"
             >
               <Printer className="w-3.5 h-3.5 text-slate-700" />
-              <span>Print Slip</span>
+              <span>Print Bill</span>
+            </button>
+
+            <button
+              onClick={() => setIsWarehousePackingSlipOpen(true)}
+              className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 font-bold text-xs rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5 border border-amber-500/25 shadow-2xs"
+              title="Print Warehouse Packing Slip"
+            >
+              <PackageCheck className="w-3.5 h-3.5 text-amber-700" />
+              <span>Packing Slip</span>
             </button>
 
             <button
@@ -1338,11 +1350,19 @@ export default function SingleOrderDetailsPage({ params }: PageProps) {
         />
       )}
 
-      {/* MODAL 5: PACKING SLIP / INVOICE MODAL */}
+      {/* MODAL 5: BILL / INVOICE MODAL */}
       {isPackingSlipOpen && (
         <PackingSlipModal
           order={order}
           onClose={() => setIsPackingSlipOpen(false)}
+        />
+      )}
+
+      {/* MODAL 5B: WAREHOUSE PACKING SLIP MODAL */}
+      {isWarehousePackingSlipOpen && (
+        <WarehousePackingSlipModal
+          order={order}
+          onClose={() => setIsWarehousePackingSlipOpen(false)}
         />
       )}
 
