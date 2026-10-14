@@ -17,7 +17,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/common/WhatsAppIcon';
-import { Order, OrderStatus } from '@/types';
+import { Order, OrderStatus, isDeliveryFeeSet } from '@/types';
 import { WhatsAppService } from '@/lib/services/whatsapp.service';
 import { OrderTimeline } from '@/components/common/OrderTimeline';
 
@@ -331,15 +331,17 @@ export function OrderDetailsDrawer({
                     <span className="font-bold text-slate-900 font-mono">₹{order.subtotal.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Delivery Fee ({order.state}):</span>
+                    <span>Delivery Fee ({order.city || order.state}):</span>
                     <span className="font-bold text-slate-900 font-mono">
-                      {(order.delivery_fee ?? 0) > 0 ? `₹${order.delivery_fee.toLocaleString()}` : '₹0 (Direct / Free)'}
+                      {isDeliveryFeeSet(order)
+                        ? `₹${order.delivery_fee.toLocaleString()}`
+                        : 'Pending (Hidden on Bill)'}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm font-black text-slate-950 pt-3 border-t border-slate-200">
                     <span>Grand Total Payable:</span>
                     <span className="text-amber-600 font-black text-lg font-mono">
-                      ₹{order.grand_total.toLocaleString()}
+                      ₹{(isDeliveryFeeSet(order) ? order.grand_total : order.subtotal).toLocaleString()}
                     </span>
                   </div>
                 </div>

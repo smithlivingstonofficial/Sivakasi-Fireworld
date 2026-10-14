@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { X, Printer, Sparkles, Tag } from 'lucide-react';
-import { Order, Product } from '@/types';
+import { Order, Product, isDeliveryFeeSet } from '@/types';
 import { useStoreSettings } from '@/context/StoreSettingsContext';
 import { ProductService } from '@/lib/services/product.service';
 import { SettingsService } from '@/lib/services/settings.service';
@@ -106,7 +106,8 @@ export function PackingSlipModal({ order, onClose }: PackingSlipModalProps) {
       ? Math.round((totalDiscountAmount / totalCalculatedMrp) * 100)
       : 0;
 
-  const deliveryFee = order.delivery_fee || 0;
+  const deliveryFeeIsSet = isDeliveryFeeSet(order);
+  const deliveryFee = deliveryFeeIsSet ? (order.delivery_fee || 0) : 0;
   const grandTotal = finalItemsSubtotal + deliveryFee;
 
   return createPortal(
@@ -433,12 +434,14 @@ export function PackingSlipModal({ order, onClose }: PackingSlipModalProps) {
                   ₹{finalItemsSubtotal.toLocaleString('en-IN')}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span>Delivery Freight:</span>
-                <span className="font-mono text-slate-950 font-extrabold">
-                  {deliveryFee > 0 ? `₹${deliveryFee.toLocaleString('en-IN')}` : '₹0 (Nil / Direct)'}
-                </span>
-              </div>
+              {deliveryFeeIsSet && (
+                <div className="flex justify-between">
+                  <span>Delivery Freight ({order.city || order.state}):</span>
+                  <span className="font-mono text-slate-950 font-extrabold">
+                    {deliveryFee > 0 ? `₹${deliveryFee.toLocaleString('en-IN')}` : '₹0 (Free / Nil)'}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-sm sm:text-base print:text-[11pt] font-black text-slate-950 pt-1.5 border-t-2 border-slate-950">
                 <span>Grand Total Payable:</span>
                 <span className="font-mono text-amber-700 print:text-black text-base print:text-[11.5pt] font-black">

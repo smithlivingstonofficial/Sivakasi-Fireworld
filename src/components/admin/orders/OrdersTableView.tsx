@@ -8,9 +8,10 @@ import {
   Printer,
   PackageCheck,
   ChevronRight,
+  Truck,
 } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/common/WhatsAppIcon';
-import { Order, OrderStatus } from '@/types';
+import { Order, OrderStatus, isDeliveryFeeSet } from '@/types';
 import { WhatsAppService } from '@/lib/services/whatsapp.service';
 
 interface OrdersTableViewProps {
@@ -21,6 +22,7 @@ interface OrdersTableViewProps {
   onSelectOrder: (order: Order) => void;
   onPrintSlip: (order: Order) => void;
   onPrintPackingSlip?: (order: Order) => void;
+  onSetDeliveryFee?: (order: Order) => void;
   onRequestStatusChange: (
     orderId: string,
     orderNumber: string,
@@ -80,6 +82,7 @@ export function OrdersTableView({
   onSelectOrder,
   onPrintSlip,
   onPrintPackingSlip,
+  onSetDeliveryFee,
   onRequestStatusChange,
   onTogglePaymentSettlement,
   onOpenWhatsAppModal,
@@ -258,9 +261,27 @@ export function OrdersTableView({
                   <span className="font-mono font-extrabold text-slate-900 text-xs sm:text-sm whitespace-nowrap block">
                     ₹{order.grand_total.toLocaleString('en-IN')}
                   </span>
-                  <span className="text-[10px] text-slate-400 block whitespace-nowrap mt-0.5">
-                    {order.items?.length || 0} items
-                  </span>
+                  <div className="flex items-center justify-end gap-1 mt-0.5">
+                    <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                      {order.items?.length || 0} items
+                    </span>
+                    <span className="text-slate-300">•</span>
+                    {isDeliveryFeeSet(order) ? (
+                      <span
+                        className="text-[9.5px] font-bold text-emerald-700 whitespace-nowrap"
+                        title="Delivery charge configured and shown on bill"
+                      >
+                        ₹{order.delivery_fee} frt ✓
+                      </span>
+                    ) : (
+                      <span
+                        className="text-[9.5px] font-bold text-amber-700 whitespace-nowrap"
+                        title="Delivery charge pending — hidden on customer bill"
+                      >
+                        Frt: Pending
+                      </span>
+                    )}
+                  </div>
                 </td>
 
                 {/* Status */}
@@ -296,6 +317,25 @@ export function OrdersTableView({
                     >
                       <WhatsAppIcon className="w-3.5 h-3.5 fill-current" />
                     </button>
+
+                    {onSetDeliveryFee && (
+                      <button
+                        type="button"
+                        onClick={() => onSetDeliveryFee(order)}
+                        className={`p-1.5 rounded-lg transition-colors cursor-pointer border ${
+                          isDeliveryFeeSet(order)
+                            ? 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
+                            : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 border-amber-500/30'
+                        }`}
+                        title={
+                          isDeliveryFeeSet(order)
+                            ? `Edit Delivery Freight (Set: ₹${order.delivery_fee})`
+                            : 'Set Delivery Freight (Currently hidden on bill)'
+                        }
+                      >
+                        <Truck className="w-3.5 h-3.5" />
+                      </button>
+                    )}
 
                     <button
                       type="button"

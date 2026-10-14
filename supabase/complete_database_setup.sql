@@ -149,6 +149,7 @@ CREATE TABLE IF NOT EXISTS orders (
     subtotal DECIMAL(10, 2) NOT NULL,
     discount_amount DECIMAL(10, 2) DEFAULT 0,
     delivery_fee DECIMAL(10, 2) DEFAULT 0,
+    delivery_fee_set BOOLEAN DEFAULT false,
     grand_total DECIMAL(10, 2) NOT NULL,
     status order_status DEFAULT 'PENDING',
     admin_notes TEXT,

@@ -12,7 +12,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/common/WhatsAppIcon';
-import { Order, OrderStatus } from '@/types';
+import { Order, OrderStatus, isDeliveryFeeSet } from '@/types';
 import { WhatsAppService } from '@/lib/services/whatsapp.service';
 
 interface OrdersCardViewProps {
@@ -22,6 +22,7 @@ interface OrdersCardViewProps {
   onSelectOrder: (order: Order) => void;
   onPrintSlip: (order: Order) => void;
   onPrintPackingSlip?: (order: Order) => void;
+  onSetDeliveryFee?: (order: Order) => void;
   onRequestStatusChange: (
     orderId: string,
     orderNumber: string,
@@ -80,6 +81,7 @@ export function OrdersCardView({
   onSelectOrder,
   onPrintSlip,
   onPrintPackingSlip,
+  onSetDeliveryFee,
   onRequestStatusChange,
   onTogglePaymentSettlement,
   onOpenWhatsAppModal,
@@ -374,9 +376,37 @@ export function OrdersCardView({
                             </span>
                           )}
                         </div>
+                        {isDeliveryFeeSet(order) ? (
+                          <span className="text-[9.5px] font-bold text-emerald-700 block mt-0.5">
+                            +₹{order.delivery_fee} Freight ✓
+                          </span>
+                        ) : (
+                          <span className="text-[9.5px] font-bold text-amber-700 block mt-0.5">
+                            Freight: Pending
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                        {onSetDeliveryFee && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSetDeliveryFee(order);
+                            }}
+                            className={`px-2.5 py-1.5 rounded-xl transition-all border cursor-pointer text-xs font-bold flex items-center gap-1 shadow-2xs active:scale-95 ${
+                              isDeliveryFeeSet(order)
+                                ? 'bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-200'
+                                : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 border-amber-500/25'
+                            }`}
+                            title="Set / Edit Delivery Freight"
+                          >
+                            <Truck className="w-3.5 h-3.5" />
+                            <span>Freight</span>
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={(e) => {

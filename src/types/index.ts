@@ -105,6 +105,7 @@ export interface Order {
   subtotal: number;
   discount_amount: number;
   delivery_fee: number;
+  delivery_fee_set?: boolean;
   grand_total: number;
   status: OrderStatus;
   admin_notes?: string;
@@ -118,6 +119,17 @@ export interface Order {
   items?: OrderItem[];
   history?: OrderStatusHistory[];
   tags?: string[];
+}
+
+/**
+ * Checks whether the delivery charges have been explicitly confirmed and set by an admin.
+ * Delivery charges differ from place to place, so until set by admin, they are hidden from user bill prints.
+ */
+export function isDeliveryFeeSet(order: Order | null | undefined): boolean {
+  if (!order) return false;
+  if (order.delivery_fee_set === true) return true;
+  if (Array.isArray(order.tags) && order.tags.includes('delivery_fee_set')) return true;
+  return false;
 }
 
 export interface DeliveryZone {

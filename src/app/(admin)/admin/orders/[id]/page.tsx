@@ -38,13 +38,14 @@ import {
 import { WhatsAppIcon } from '@/components/common/WhatsAppIcon';
 import { OrderService } from '@/lib/services/order.service';
 import { ProductService } from '@/lib/services/product.service';
-import { Order, OrderStatus, OrderItem, Product } from '@/types';
+import { Order, OrderStatus, OrderItem, Product, isDeliveryFeeSet } from '@/types';
 import { WhatsAppModal } from '@/components/admin/orders/WhatsAppModal';
 import { PackingSlipModal } from '@/components/admin/orders/PackingSlipModal';
 import { WarehousePackingSlipModal } from '@/components/admin/orders/WarehousePackingSlipModal';
 import { StatusConfirmationModal, PendingStatusChange } from '@/components/admin/orders/StatusConfirmationModal';
 import { CancelOrderModal } from '@/components/admin/orders/CancelOrderModal';
 import { ReopenOrderModal } from '@/components/admin/orders/ReopenOrderModal';
+import { SetDeliveryFeeModal } from '@/components/admin/orders/SetDeliveryFeeModal';
 import { ToastNotification, ToastMessage } from '@/components/admin/orders/ToastNotification';
 import { WhatsAppTemplateType } from '@/lib/services/whatsapp.service';
 import { AdminProductModal } from '@/components/admin/orders/AdminProductModal';
@@ -98,6 +99,11 @@ export default function SingleOrderDetailsPage({ params }: PageProps) {
   const [savingNotes, setSavingNotes] = useState(false);
   const [savingLogistics, setSavingLogistics] = useState(false);
 
+  // Delivery Charges configuration state
+  const [isDeliveryFeeModalOpen, setIsDeliveryFeeModalOpen] = useState(false);
+  const [deliveryFeeInput, setDeliveryFeeInput] = useState<string>('');
+  const [savingDeliveryFee, setSavingDeliveryFee] = useState(false);
+
   // Modals state
   const [isPackingSlipOpen, setIsPackingSlipOpen] = useState(false);
   const [isWarehousePackingSlipOpen, setIsWarehousePackingSlipOpen] = useState(false);
@@ -132,6 +138,7 @@ export default function SingleOrderDetailsPage({ params }: PageProps) {
         setTrackingNumber(found.tracking_number || '');
         setEstDeliveryDays(found.estimated_delivery || '2-3 Days');
         setAdminNotesInput(found.admin_notes || '');
+        setDeliveryFeeInput(isDeliveryFeeSet(found) ? String(found.delivery_fee) : '');
         if (isManualRefresh) addToast('Order data refreshed from database', 'info');
       } else {
         setOrder(null);
@@ -303,6 +310,26 @@ export default function SingleOrderDetailsPage({ params }: PageProps) {
       addToast(`Failed to save notes: ${err.message}`, 'error');
     } finally {
       setSavingNotes(false);
+    }
+  };
+
+  // Save Delivery Fee Directly from Logistics / Financial Card
+  const handleQuickSaveDeliveryFee = async () => {
+    if (!order) return;
+    const feeVal = Number(deliveryFeeInput);
+    if (isNaN(feeVal) || feeVal < 0) {
+      addToast('Please enter a valid positive delivery fee amount', 'error');
+      return;
+    }
+    setSavingDeliveryFee(true);
+    try {
+      const updated = await OrderService.updateDeliveryFee(order.id, feeVal, true);
+      setOrder(updated);
+      addToast(`Delivery freight set to ₹${feeVal} & will now display in customer bill!`, 'success');
+    } catch (err: any) {
+      addToast(err.message || 'Failed to update delivery charges', 'error');
+    } finally {
+      setSavingDeliveryFee(false);
     }
   };
 
@@ -931,17 +958,54 @@ export default function SingleOrderDetailsPage({ params }: PageProps) {
                 </span>
               </div>
 
-              <div className="flex justify-between">
-                <span>Direct Delivery Freight ({order.state}):</span>
-                <span className="font-bold text-slate-900 font-mono">
-                  {(order.delivery_fee ?? 0) > 0 ? `₹${order.delivery_fee.toLocaleString('en-IN')}` : '₹0 (Free Direct Freight)'}
-                </span>
+              <div className="pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                      <Truck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      <span>Delivery Freight ({order.city || order.state}):</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 block font-normal mt-0.5">
+                      {isDeliveryFeeSet(order)
+                        ? '✓ Configured & visible on customer bill'
+                        : '⚠️ Not set yet (hidden on customer bill print)'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isDeliveryFeeSet(order) ? (
+                      <span className="font-bold text-slate-900 font-mono text-sm">
+                        ₹{order.delivery_fee.toLocaleString('en-IN')}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-black text-amber-900 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-300">
+                        Pending Admin Setup
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setIsDeliveryFeeModalOpen(true)}
+                      className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-[10px] transition-all cursor-pointer shadow-2xs"
+                      title="Set delivery charges amount"
+                    >
+                      {isDeliveryFeeSet(order) ? 'Edit Amount' : 'Set Delivery Charge'}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-between text-base font-black text-slate-950 pt-3 border-t border-slate-200 items-baseline">
-                <span>Grand Total Amount:</span>
+                <div>
+                  <span>Grand Total Amount:</span>
+                  {!isDeliveryFeeSet(order) && (
+                    <span className="block text-[10px] text-amber-800 font-normal">
+                      (Items subtotal — freight will add when set)
+                    </span>
+                  )}
+                </div>
                 <span className="text-amber-600 font-black text-2xl font-mono">
-                  ₹{order.grand_total.toLocaleString('en-IN')}
+                  ₹{(isDeliveryFeeSet(order) ? order.grand_total : order.subtotal).toLocaleString('en-IN')}
                 </span>
               </div>
             </div>
@@ -1129,6 +1193,51 @@ export default function SingleOrderDetailsPage({ params }: PageProps) {
             </div>
 
             <div className="space-y-3">
+              {/* Delivery Freight Quick Config */}
+              <div className="space-y-1.5 p-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-black text-amber-950 flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Delivery Charges ({order.city})</span>
+                  </label>
+                  {isDeliveryFeeSet(order) ? (
+                    <span className="text-[9.5px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300">
+                      ✓ Shown on Bill (₹{order.delivery_fee})
+                    </span>
+                  ) : (
+                    <span className="text-[9.5px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">
+                      ⚠️ Hidden on Bill
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 font-bold text-xs">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={deliveryFeeInput}
+                      onChange={(e) => setDeliveryFeeInput(e.target.value)}
+                      placeholder="e.g. 250"
+                      className="w-full pl-6 pr-2 py-2 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 text-xs outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleQuickSaveDeliveryFee}
+                    disabled={savingDeliveryFee}
+                    className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition-colors cursor-pointer shadow-2xs shrink-0"
+                  >
+                    {savingDeliveryFee ? 'Saving...' : 'Apply to Bill'}
+                  </button>
+                </div>
+                <p className="text-[10px] text-amber-900/80 leading-tight">
+                  Charges vary by location. Bill print hides delivery fee until saved here.
+                </p>
+              </div>
+
               <div className="space-y-1">
                 <label className="text-[11px] font-black text-slate-600 block">
                   Courier Partner
@@ -1355,6 +1464,19 @@ export default function SingleOrderDetailsPage({ params }: PageProps) {
         <PackingSlipModal
           order={order}
           onClose={() => setIsPackingSlipOpen(false)}
+        />
+      )}
+
+      {/* MODAL 5A: SET DELIVERY FEE MODAL */}
+      {isDeliveryFeeModalOpen && (
+        <SetDeliveryFeeModal
+          order={order}
+          onClose={() => setIsDeliveryFeeModalOpen(false)}
+          onSaved={(updated) => {
+            setOrder(updated);
+            setDeliveryFeeInput(String(updated.delivery_fee));
+            addToast(`Delivery freight set to ₹${updated.delivery_fee} & applied to customer bill!`, 'success');
+          }}
         />
       )}
 

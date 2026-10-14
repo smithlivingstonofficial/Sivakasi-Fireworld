@@ -93,21 +93,34 @@ export class OrderService {
       pincode: dto.pincode.trim(),
       subtotal: pricing.subtotal,
       discount_amount: pricing.discountAmount,
-      delivery_fee: pricing.deliveryFee,
-      grand_total: pricing.grandTotal,
+      delivery_fee: 0,
+      delivery_fee_set: false,
+      grand_total: pricing.subtotal,
       status: 'PENDING' as OrderStatus,
       is_paid: false,
       payment_method: 'DIRECT_PAYMENT',
+      tags: ['delivery_fee_pending'],
       created_at: now,
       updated_at: now,
     };
 
     const supabase = this.getSupabase();
-    const { data: orderData, error: orderError } = await supabase
+    let { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert(newOrderPayload)
       .select()
       .maybeSingle();
+
+    if (orderError && (orderError.message?.includes('delivery_fee_set') || (orderError as any).details?.includes('delivery_fee_set'))) {
+      delete (newOrderPayload as any).delivery_fee_set;
+      const retryRes = await supabase
+        .from('orders')
+        .insert(newOrderPayload)
+        .select()
+        .maybeSingle();
+      orderData = retryRes.data;
+      orderError = retryRes.error;
+    }
 
     if (orderError || !orderData) {
       throw orderError || new Error('Failed to create order. Please try again.');
@@ -132,7 +145,8 @@ export class OrderService {
       ...orderData,
       grand_total: Number(orderData.grand_total),
       subtotal: Number(orderData.subtotal),
-      delivery_fee: Number(orderData.delivery_fee),
+      delivery_fee: Number(orderData.delivery_fee || 0),
+      delivery_fee_set: false,
       discount_amount: Number(orderData.discount_amount),
       items: (itemsData as any[])?.map((item) => {
         const matched = pricing.items.find((p) => p.product_id === item.product_id);
@@ -184,7 +198,11 @@ export class OrderService {
           ...data,
           grand_total: Number(data.grand_total),
           subtotal: Number(data.subtotal),
-          delivery_fee: Number(data.delivery_fee),
+          delivery_fee: Number(data.delivery_fee || 0),
+          delivery_fee_set: Boolean(
+            data.delivery_fee_set === true ||
+            (Array.isArray(data.tags) && data.tags.includes('delivery_fee_set'))
+          ),
           discount_amount: Number(data.discount_amount),
         };
       }
@@ -234,6 +252,10 @@ export class OrderService {
       subtotal: Number(item.subtotal),
       discount_amount: Number(item.discount_amount || 0),
       delivery_fee: Number(item.delivery_fee || 0),
+      delivery_fee_set: Boolean(
+        item.delivery_fee_set === true ||
+        (Array.isArray(item.tags) && item.tags.includes('delivery_fee_set'))
+      ),
       grand_total: Number(item.grand_total),
       status: item.status,
       admin_notes: item.admin_notes,
@@ -316,7 +338,11 @@ export class OrderService {
       history: data.history || updatedHistory,
       grand_total: Number(data.grand_total),
       subtotal: Number(data.subtotal),
-      delivery_fee: Number(data.delivery_fee),
+      delivery_fee: Number(data.delivery_fee || 0),
+      delivery_fee_set: Boolean(
+        data.delivery_fee_set === true ||
+        (Array.isArray(data.tags) && data.tags.includes('delivery_fee_set'))
+      ),
       discount_amount: Number(data.discount_amount),
     };
 
@@ -429,7 +455,11 @@ export class OrderService {
       history: data.history || updatedHistory,
       grand_total: Number(data.grand_total),
       subtotal: Number(data.subtotal),
-      delivery_fee: Number(data.delivery_fee),
+      delivery_fee: Number(data.delivery_fee || 0),
+      delivery_fee_set: Boolean(
+        data.delivery_fee_set === true ||
+        (Array.isArray(data.tags) && data.tags.includes('delivery_fee_set'))
+      ),
       discount_amount: Number(data.discount_amount),
     };
 
@@ -535,7 +565,11 @@ export class OrderService {
       history: data.history || updatedHistory,
       grand_total: Number(data.grand_total),
       subtotal: Number(data.subtotal),
-      delivery_fee: Number(data.delivery_fee),
+      delivery_fee: Number(data.delivery_fee || 0),
+      delivery_fee_set: Boolean(
+        data.delivery_fee_set === true ||
+        (Array.isArray(data.tags) && data.tags.includes('delivery_fee_set'))
+      ),
       discount_amount: Number(data.discount_amount),
     };
 
@@ -597,7 +631,11 @@ export class OrderService {
       ...data,
       grand_total: Number(data.grand_total),
       subtotal: Number(data.subtotal),
-      delivery_fee: Number(data.delivery_fee),
+      delivery_fee: Number(data.delivery_fee || 0),
+      delivery_fee_set: Boolean(
+        data.delivery_fee_set === true ||
+        (Array.isArray(data.tags) && data.tags.includes('delivery_fee_set'))
+      ),
       discount_amount: Number(data.discount_amount),
     };
   }
@@ -623,9 +661,111 @@ export class OrderService {
       ...data,
       grand_total: Number(data.grand_total),
       subtotal: Number(data.subtotal),
-      delivery_fee: Number(data.delivery_fee),
+      delivery_fee: Number(data.delivery_fee || 0),
+      delivery_fee_set: Boolean(
+        data.delivery_fee_set === true ||
+        (Array.isArray(data.tags) && data.tags.includes('delivery_fee_set'))
+      ),
       discount_amount: Number(data.discount_amount),
     };
+  }
+
+  /**
+   * Set or update delivery charges for an order.
+   * Delivery charges differ by destination place and will only appear in the user bill print once set here.
+   */
+  static async updateDeliveryFee(
+    id: string,
+    deliveryFee: number,
+    isSet: boolean = true
+  ): Promise<Order> {
+    const supabase = this.getSupabase();
+    const cleanId = id.trim();
+    const isIdUuid = this.isUuid(cleanId);
+
+    const current = await this.getOrderById(cleanId);
+    if (!current) {
+      throw new Error(`Order ${id} not found.`);
+    }
+
+    const fee = Math.max(0, Number(deliveryFee) || 0);
+    const newGrandTotal = isSet ? (current.subtotal + fee) : current.subtotal;
+    const currentTags = Array.isArray(current.tags) ? current.tags : [];
+    const updatedTags = isSet
+      ? Array.from(new Set([...currentTags.filter((t) => t !== 'delivery_fee_pending'), 'delivery_fee_set']))
+      : Array.from(new Set([...currentTags.filter((t) => t !== 'delivery_fee_set'), 'delivery_fee_pending']));
+
+    const timestamp = new Date().toLocaleString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const noteText = isSet
+      ? `[Delivery Charge Updated] (${timestamp}): Set to ₹${fee.toLocaleString('en-IN')} by Admin`
+      : `[Delivery Charge Reset] (${timestamp}): Reset to pending / hidden from bill`;
+
+    const updatedNotes = current.admin_notes
+      ? `${current.admin_notes}\n${noteText}`
+      : noteText;
+
+    const payload: any = {
+      delivery_fee: fee,
+      delivery_fee_set: isSet,
+      grand_total: newGrandTotal,
+      tags: updatedTags,
+      admin_notes: updatedNotes,
+      updated_at: new Date().toISOString(),
+    };
+
+    let query = isIdUuid
+      ? supabase.from('orders').update(payload).eq('id', cleanId)
+      : supabase.from('orders').update(payload).eq('order_number', cleanId);
+
+    let { data, error } = await query.select('*, items:order_items(*)').maybeSingle();
+
+    if (error && (error.message?.includes('delivery_fee_set') || (error as any).details?.includes('delivery_fee_set'))) {
+      delete payload.delivery_fee_set;
+      query = isIdUuid
+        ? supabase.from('orders').update(payload).eq('id', cleanId)
+        : supabase.from('orders').update(payload).eq('order_number', cleanId);
+      const retryRes = await query.select('*, items:order_items(*)').maybeSingle();
+      data = retryRes.data;
+      error = retryRes.error;
+    }
+
+    if (error || !data) {
+      throw new Error(error?.message || `Failed to update delivery fee for order ${id}.`);
+    }
+
+    const updatedOrder: Order = {
+      ...data,
+      grand_total: Number(data.grand_total),
+      subtotal: Number(data.subtotal),
+      delivery_fee: Number(data.delivery_fee),
+      delivery_fee_set: isSet,
+      discount_amount: Number(data.discount_amount),
+    };
+
+    if (typeof window !== 'undefined') {
+      try {
+        if ('BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('vpp_orders_channel');
+          bc.postMessage({
+            type: 'ORDER_STATUS_CHANGED',
+            orderId: current.id,
+            orderNumber: updatedOrder.order_number,
+            status: updatedOrder.status,
+            order: updatedOrder,
+          });
+          bc.close();
+        }
+      } catch (e) {
+        console.error('Failed to broadcast delivery fee change:', e);
+      }
+    }
+
+    return updatedOrder;
   }
 
   /**

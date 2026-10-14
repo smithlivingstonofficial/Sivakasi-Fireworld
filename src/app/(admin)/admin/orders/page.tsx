@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Papa from 'papaparse';
 import { createClient } from '@/lib/supabase/client';
 import { OrderService } from '@/lib/services/order.service';
-import { Order, OrderStatus } from '@/types';
+import { Order, OrderStatus, isDeliveryFeeSet } from '@/types';
 
 // Import Modular Components
 import { OrderMetrics } from '@/components/admin/orders/OrderMetrics';
@@ -15,6 +15,7 @@ import { OrdersTableView } from '@/components/admin/orders/OrdersTableView';
 import { OrdersCardView } from '@/components/admin/orders/OrdersCardView';
 import { PackingSlipModal } from '@/components/admin/orders/PackingSlipModal';
 import { WarehousePackingSlipModal } from '@/components/admin/orders/WarehousePackingSlipModal';
+import { SetDeliveryFeeModal } from '@/components/admin/orders/SetDeliveryFeeModal';
 import {
   StatusConfirmationModal,
   PendingStatusChange,
@@ -36,6 +37,7 @@ export default function AdminOrdersPage() {
 
   const [packingSlipOrder, setPackingSlipOrder] = useState<Order | null>(null);
   const [warehousePackingSlipOrder, setWarehousePackingSlipOrder] = useState<Order | null>(null);
+  const [deliveryFeeModalOrder, setDeliveryFeeModalOrder] = useState<Order | null>(null);
   const [whatsAppOrder, setWhatsAppOrder] = useState<Order | null>(null);
   const [whatsAppTemplate, setWhatsAppTemplate] = useState<WhatsAppTemplateType | undefined>(undefined);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
@@ -284,8 +286,8 @@ export default function AdminOrdersPage() {
       Status: o.status,
       'Payment Settled': o.is_paid ? 'YES' : 'NO',
       Subtotal: o.subtotal,
-      'Delivery Fee': o.delivery_fee,
-      'Grand Total': o.grand_total,
+      'Delivery Fee': isDeliveryFeeSet(o) ? o.delivery_fee : 'Pending (Hidden on Bill)',
+      'Grand Total': isDeliveryFeeSet(o) ? o.grand_total : o.subtotal,
       'Courier Partner': o.courier_partner || '',
       'Tracking LR': o.tracking_number || '',
       'Created Date': new Date(o.created_at).toLocaleString('en-IN'),
@@ -367,6 +369,7 @@ export default function AdminOrdersPage() {
           onSelectOrder={(order) => router.push(`/admin/orders/${order.order_number}`)}
           onPrintSlip={(order) => setPackingSlipOrder(order)}
           onPrintPackingSlip={(order) => setWarehousePackingSlipOrder(order)}
+          onSetDeliveryFee={(order) => setDeliveryFeeModalOrder(order)}
           onRequestStatusChange={requestStatusChange}
           onTogglePaymentSettlement={handleTogglePaymentSettlement}
           onOpenWhatsAppModal={handleOpenWhatsAppModal}
@@ -379,6 +382,7 @@ export default function AdminOrdersPage() {
           onSelectOrder={(order) => router.push(`/admin/orders/${order.order_number}`)}
           onPrintSlip={(order) => setPackingSlipOrder(order)}
           onPrintPackingSlip={(order) => setWarehousePackingSlipOrder(order)}
+          onSetDeliveryFee={(order) => setDeliveryFeeModalOrder(order)}
           onRequestStatusChange={requestStatusChange}
           onTogglePaymentSettlement={handleTogglePaymentSettlement}
           onOpenWhatsAppModal={handleOpenWhatsAppModal}
@@ -406,6 +410,19 @@ export default function AdminOrdersPage() {
         pendingStatusChange={pendingStatusChange}
         onCancel={() => setPendingStatusChange(null)}
         onConfirm={confirmStatusChange}
+      />
+
+      {/* Set Delivery Fee Modal */}
+      <SetDeliveryFeeModal
+        order={deliveryFeeModalOrder}
+        onClose={() => setDeliveryFeeModalOrder(null)}
+        onSaved={(updated) => {
+          setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+          addToast(
+            `Delivery charges set to ₹${updated.delivery_fee} & applied to bill for #${updated.order_number}`,
+            'success'
+          );
+        }}
       />
 
       {/* Bill & Tax Invoice Modal */}

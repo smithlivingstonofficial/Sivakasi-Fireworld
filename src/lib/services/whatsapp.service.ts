@@ -1,4 +1,4 @@
-import { Order } from '@/types';
+import { Order, isDeliveryFeeSet } from '@/types';
 import { getSiteUrl } from '@/lib/constants/site';
 
 export type WhatsAppTemplateType =
@@ -75,8 +75,8 @@ ${itemsList}
 
 *Financial Summary:*
 • Subtotal: ₹${order.subtotal.toLocaleString('en-IN')}
-• Delivery Fee: ₹${(order.delivery_fee ?? 0).toLocaleString('en-IN')}
-• *Grand Total: ₹${order.grand_total.toLocaleString('en-IN')}*
+• Delivery Fee: ${isDeliveryFeeSet(order) ? `₹${(order.delivery_fee ?? 0).toLocaleString('en-IN')}` : 'To be confirmed by store'}
+• *Grand Total: ₹${(isDeliveryFeeSet(order) ? order.grand_total : order.subtotal).toLocaleString('en-IN')}*
 
 📍 *Shipping Address:*
 ${order.shipping_address}, ${order.city}, ${order.state} - ${order.pincode}
@@ -182,7 +182,7 @@ ${trackingUrl}
       ? order.items.map((i) => `• ${i.product_name} - ${i.quantity} ${i.quantity === 1 ? 'Pc' : 'Pcs'} - ₹${i.total_price.toLocaleString('en-IN')}`).join('\n')
       : '';
 
-    const text = `🎆 *NEW CRACKER ORDER: ${order.order_number}* 🎆\n\n*Customer Details:*\n• Name: ${order.customer_name}\n• Phone: ${order.customer_mobile}\n• Shipping Address: ${order.shipping_address}, ${order.city}, ${order.state} - ${order.pincode}\n\n*Ordered Items:*\n${itemsList}\n\n*Financial Summary:*\n• Subtotal: ₹${order.subtotal.toLocaleString('en-IN')}\n• Delivery Fee: ₹${(order.delivery_fee ?? 0).toLocaleString('en-IN')}\n• *Grand Total: ₹${order.grand_total.toLocaleString('en-IN')}*\n\nThank you for choosing ${activeStoreName}! Please confirm dispatch timeline.`;
+    const text = `🎆 *NEW CRACKER ORDER: ${order.order_number}* 🎆\n\n*Customer Details:*\n• Name: ${order.customer_name}\n• Phone: ${order.customer_mobile}\n• Shipping Address: ${order.shipping_address}, ${order.city}, ${order.state} - ${order.pincode}\n\n*Ordered Items:*\n${itemsList}\n\n*Financial Summary:*\n• Subtotal: ₹${order.subtotal.toLocaleString('en-IN')}\n• Delivery Fee: ${isDeliveryFeeSet(order) ? `₹${(order.delivery_fee ?? 0).toLocaleString('en-IN')}` : 'To be confirmed by store'}\n• *Grand Total: ₹${(isDeliveryFeeSet(order) ? order.grand_total : order.subtotal).toLocaleString('en-IN')}*\n\nThank you for choosing ${activeStoreName}! Please confirm dispatch timeline.`;
 
     const encoded = encodeURIComponent(text);
     return cleanPhone ? `https://wa.me/${cleanPhone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;

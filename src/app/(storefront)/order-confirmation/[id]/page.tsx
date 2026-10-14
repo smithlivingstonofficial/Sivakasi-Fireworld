@@ -14,7 +14,7 @@ import { useStoreSettings } from '@/context/StoreSettingsContext';
 import { OrderTimeline } from '@/components/common/OrderTimeline';
 import { CancelOrderModal } from '@/components/common/CancelOrderModal';
 import { PackingSlipModal } from '@/components/admin/orders/PackingSlipModal';
-import { Order, OrderStatus } from '@/types';
+import { Order, OrderStatus, isDeliveryFeeSet } from '@/types';
 
 export default function OrderConfirmationPage() {
   const params = useParams();
@@ -305,15 +305,24 @@ export default function OrderConfirmationPage() {
               <span>Final Price (Subtotal):</span>
               <span className="font-bold text-slate-900 font-mono">₹{order.subtotal.toLocaleString('en-IN')}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Delivery Fee:</span>
-              <span className="font-bold text-slate-900 font-mono">
-                {(order.delivery_fee ?? 0) > 0 ? `₹${order.delivery_fee.toLocaleString('en-IN')}` : '₹0 (Free / Direct)'}
-              </span>
-            </div>
+            {isDeliveryFeeSet(order) ? (
+              <div className="flex justify-between">
+                <span>Delivery Fee ({order.city || order.state}):</span>
+                <span className="font-bold text-slate-900 font-mono">
+                  ₹{order.delivery_fee.toLocaleString('en-IN')}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between text-[11px] text-amber-900 bg-amber-50/80 px-2.5 py-1.5 rounded-xl border border-amber-200">
+                <span className="font-semibold">Delivery Charges:</span>
+                <span className="font-bold">To be confirmed by store</span>
+              </div>
+            )}
             <div className="flex justify-between text-base font-black text-slate-950 pt-2 border-t border-slate-200">
               <span>Grand Total Payable:</span>
-              <span className="text-amber-600 font-mono">₹{order.grand_total.toLocaleString('en-IN')}</span>
+              <span className="text-amber-600 font-mono">
+                ₹{(isDeliveryFeeSet(order) ? order.grand_total : order.subtotal).toLocaleString('en-IN')}
+              </span>
             </div>
           </div>
         </div>

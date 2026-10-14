@@ -121,8 +121,7 @@ export default function CheckoutPage() {
 
   const isMinOrderReachedForState = subtotal >= activeMinOrderThreshold;
   const remainingForMinOrderForState = Math.max(0, activeMinOrderThreshold - subtotal);
-  const effectiveDeliveryFee = isMinOrderReachedForState ? (matchingZone?.delivery_fee ?? 0) : 0;
-  const effectiveGrandTotal = subtotal + effectiveDeliveryFee;
+  const effectiveGrandTotal = subtotal;
 
   const isMaxLimitExceeded = Boolean(
     settings?.max_order_limit_enabled &&
@@ -575,8 +574,8 @@ export default function CheckoutPage() {
                   <span className="truncate pr-2">
                     Delivery ({formData.state}):
                   </span>
-                  <span className="font-bold text-slate-900 font-mono">
-                    ₹{effectiveDeliveryFee.toLocaleString('en-IN')}
+                  <span className="font-bold text-amber-800 text-[10.5px] bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                    To be confirmed by store
                   </span>
                 </div>
 
@@ -584,9 +583,9 @@ export default function CheckoutPage() {
                 <div className="mt-2 p-2.5 sm:p-3 rounded-xl bg-slate-950 text-white shadow-md border border-amber-500/40 flex items-center justify-between">
                   <div>
                     <span className="text-[10px] uppercase tracking-wider font-extrabold text-amber-400 block leading-none">
-                      Amount To Pay
+                      Items Subtotal
                     </span>
-                    <span className="text-[9px] text-slate-400 font-medium mt-0.5 block">Taxes &amp; freight included</span>
+                    <span className="text-[9px] text-slate-400 font-medium mt-0.5 block">Delivery freight confirmed separately</span>
                   </div>
                   <span className="text-base sm:text-lg font-black text-amber-400 font-mono tracking-tight glow-gold">
                     ₹{effectiveGrandTotal.toLocaleString('en-IN')}
